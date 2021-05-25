@@ -1,0 +1,126 @@
+---
+title: "Final Project"
+author: "Joe Barry"
+date: "April 15, 2019"
+output: html_document
+---
+
+```{r}
+library(ggplot2)
+library(rpart)
+library(rpart.plot)
+library(mlbench)
+library(caret)
+library(caretEnsemble)
+summary(NBATrain)
+```
+
+```{r}
+##### Models #####
+
+model1 <- lm(SeriesWon ~ OeFG + OTOV + ORB + OFTFGA + DeFG + DTOV + DRB + DFTFGA, data = NBATrain)
+summary(model1)
+
+model2 <- lm(SeriesWon ~ W * MOV, data = NBATrain)
+summary(model2)
+
+model3 <- lm(SeriesWon ~ Attend. * SOS, data = NBATrain)
+summary(model3)
+
+
+trainteam <- NBATrain[train.rows,]
+
+model4 <- rpart(SeriesWon ~ OeFG + OTOV + ORB + OFTFGA + DeFG + DTOV + DRB + DFTFGA, method = 'anova', data = trainteam, control=rpart.control(minsplit=2, cp=0.0001))
+rpart.plot(model4, box.palette = "Purples")
+
+model5 <- rpart(SeriesWon ~ W + MOV, method = 'anova', data = trainteam, control=rpart.control(minsplit=2, cp=0.0001))
+rpart.plot(model5, box.palette = "Purples")
+
+model6 <- rpart(SeriesWon ~ Attend. + SOS, method = 'anova', data = trainteam, control=rpart.control(minsplit=2, cp=0.01))
+rpart.plot(model6, box.palette = "Purples")
+```
+
+```{r}
+
+##### Tree Model Variable Importance #####
+
+varImp <- data.frame(imp = model4$variable.importance)
+varImp$var <- row.names(varImp)
+ggplot(varImp) + geom_bar(aes(x=var, y=imp), stat="identity") +
+  labs(x="", y="Importance", title="Variable Importance for Model 4")
+
+varImp <- data.frame(imp = model5$variable.importance)
+varImp$var <- row.names(varImp)
+ggplot(varImp) + geom_bar(aes(x=var, y=imp), stat="identity") +
+  labs(x="", y="Importance", title="Variable Importance for Model 5")
+
+varImp <- data.frame(imp = model6$variable.importance)
+varImp$var <- row.names(varImp)
+ggplot(varImp) + geom_bar(aes(x=var, y=imp), stat="identity") +
+  labs(x="", y="Importance", title="Variable Importance for Model 6")
+```
+
+```{r}
+##### Model Training #####
+
+
+NBATrain$tree1 <- predict(model1, newdata=NBATrain, type="response")
+NBATest$tree1 <- predict(model1, newdata=NBATest, type="response")
+X18_19_data$tree1 <- predict(model1, newdata=X18_19_data, type="response")
+NBATrain$tree2 <- predict(model2, newdata=NBATrain, type="response")
+NBATest$tree2 <- predict(model2, newdata=NBATest, type="response")
+X18_19_data$tree2 <- predict(model2, newdata=X18_19_data, type="response")
+NBATrain$tree3 <- predict(model3, newdata=NBATrain, type="response")
+NBATest$tree3 <- predict(model3, newdata=NBATest, type="response")
+X18_19_data$tree3 <- predict(model3, newdata=X18_19_data, type="response")
+
+head(predict(model4, newdata=NBATrain))
+
+head(tree4 <- predict(model4, newdata=NBATrain))
+NBATrain$tree4 <- tree4
+NBATest$tree4 <- predict(model4, newdata=NBATest)
+X18_19_data$tree4 <- predict(model4, newdata=X18_19_data)
+head(tree5 <- predict(model5, newdata=NBATrain))
+NBATrain$tree5 <- tree5
+NBATest$tree5 <- predict(model5, newdata=NBATest)
+X18_19_data$tree5 <- predict(model5, newdata=X18_19_data)
+head(tree6 <- predict(model6, newdata=NBATrain))
+NBATrain$tree6 <- tree6
+NBATest$tree6 <- predict(model6, newdata=NBATest)
+X18_19_data$tree6 <- predict(model6, newdata=X18_19_data)
+
+```
+
+```{r}
+
+##### Random Forest #####
+
+library(randomForest)
+atrain.rf <- NBATrain[,grep("^tree", names(NBATrain))]
+atest.rf <- NBATest[,grep("^tree", names(NBATest))]
+afinal.rf <- X18_19_data[,grep("^tree", names(X18_19_data))]
+btrain.rf <- factor(NBATrain$SeriesWon)
+btest.rf <- factor(NBATest$SeriesWon)
+bfinal.rf <- factor(X18_19_data$SeriesWon)
+nbamod <- randomForest(x = atrain.rf, y = btrain.rf, importance=T, keep.forest=T)
+varImpPlot(nbamod)
+
+##### Predictions #####
+
+predict(nbamod, newdata = atest.rf, type = "response")
+predict(nbamod, newdata = afinal.rf, type = "response")
+
+predict(nbamod, newdata = atest.rf, type = "prob")
+predict(nbamod, newdata = afinal.rf, type = "prob")
+
+#for each matchup, % is proportion of algorithm above current round
+
+
+
+# # # # #
+```
+
+
+
+
+
